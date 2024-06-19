@@ -123,8 +123,18 @@ class DeviceInfoPlusWindowsPlugin extends DeviceInfoPlatform {
       if (result != 0) {
         return memoryInKilobytes.value ~/ 1024;
       } else {
-        final error = GetLastError();
-        throw WindowsException(HRESULT_FROM_WIN32(error));
+        final memoryStatusEx = calloc<MEMORYSTATUSEX>();
+        try {
+          memoryStatusEx.ref.dwLength = sizeOf<MEMORYSTATUSEX>();
+          final result = GlobalMemoryStatusEx(memoryStatusEx);
+          if (result == 1) {
+            return (memoryStatusEx.ref.ullTotalPhys / 1024 / 1024).round();
+          } else {
+            throw WindowsException(HRESULT_FROM_WIN32(GetLastError()));
+          }
+        } finally {
+          free(memoryStatusEx);
+        }
       }
     } finally {
       free(memoryInKilobytes);
